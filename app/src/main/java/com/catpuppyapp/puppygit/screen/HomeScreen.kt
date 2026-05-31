@@ -79,6 +79,9 @@ import com.catpuppyapp.puppygit.screen.content.homescreen.innerpage.RepoInnerPag
 import com.catpuppyapp.puppygit.screen.content.homescreen.innerpage.ServiceInnerPage
 import com.catpuppyapp.puppygit.screen.content.homescreen.innerpage.SettingsInnerPage
 import com.catpuppyapp.puppygit.screen.content.homescreen.innerpage.SubscriptionPage
+import com.catpuppyapp.puppygit.screen.content.homescreen.fragment.MainActivityFragmentPage
+import com.catpuppyapp.puppygit.screen.content.homescreen.fragment.MainActivityFragmentTabRow
+import com.catpuppyapp.puppygit.screen.content.homescreen.fragment.MainProjectQuickToolbar
 import com.catpuppyapp.puppygit.screen.content.homescreen.scaffold.actions.ChangeListPageActions
 import com.catpuppyapp.puppygit.screen.content.homescreen.scaffold.actions.EditorPageActions
 import com.catpuppyapp.puppygit.screen.content.homescreen.scaffold.actions.FilesPageActions
@@ -929,6 +932,57 @@ fun HomeScreen(
 //        {},  //Subscription页面
     )
 
+    val selectMainFragmentPage = { page: MainActivityFragmentPage ->
+        val targetHomeItemId = page.homeItemId
+        val toolbarRepo = when(currentHomeScreen.intValue) {
+            Cons.selectedItem_ChangeList -> changeListCurRepo.value
+            Cons.selectedItem_Repos -> repoPageCurRepo.value
+            else -> repoPageRepoList.value.firstOrNull { it.id.isNotBlank() } ?: RepoEntity(id = "")
+        }
+
+        when(page) {
+            MainActivityFragmentPage.Branches -> if(toolbarRepo.id.isNotBlank()) {
+                navController.navigate(Cons.nav_BranchListScreen + "/" + toolbarRepo.id)
+            }
+            MainActivityFragmentPage.Stash -> if(toolbarRepo.id.isNotBlank()) {
+                navController.navigate(Cons.nav_StashListScreen + "/" + toolbarRepo.id)
+            }
+            MainActivityFragmentPage.Commit -> {
+                if(toolbarRepo.id.isNotBlank()) {
+                    goToChangeListPage(toolbarRepo)
+                    Cache.set(Cache.Key.changeListInnerPage_requireDoActFromParent, PageRequest.commit)
+                    changeListRequireDoActFromParent.value = true
+                }else {
+                    currentHomeScreen.intValue = targetHomeItemId
+                }
+            }
+            MainActivityFragmentPage.Conflicts, MainActivityFragmentPage.Diff -> {
+                if(toolbarRepo.id.isNotBlank()) {
+                    goToChangeListPage(toolbarRepo)
+                }else {
+                    currentHomeScreen.intValue = targetHomeItemId
+                }
+            }
+            MainActivityFragmentPage.Search -> {
+                repoPageFilterModeOn.value = true
+                currentHomeScreen.intValue = Cons.selectedItem_Repos
+            }
+            else -> {
+                val drawerIndex = drawIdList.indexOf(targetHomeItemId)
+                if(drawerIndex >= 0) {
+                    drawerItemOnClick[drawerIndex]()
+                }
+                currentHomeScreen.intValue = targetHomeItemId
+            }
+        }
+    }
+
+    val activeToolbarRepo = when(currentHomeScreen.intValue) {
+        Cons.selectedItem_ChangeList -> changeListCurRepo.value
+        Cons.selectedItem_Repos -> repoPageCurRepo.value
+        else -> repoPageRepoList.value.firstOrNull { it.id.isNotBlank() } ?: RepoEntity(id = "")
+    }
+
     // 由于打开抽屉，退出app，实际上只是销毁Activity，而改成杀进程又容易误操作中止正在执行的操作（比如正在pull，一按返回进程直接被杀了，很无语）
     // 所以，禁用按返回退出app（假退出，只是销毁Activity）的逻辑了，改成切换到后台，但如果切换到后台，下次打开页面时抽屉还会保持打开状态，很难看，所以取消按返回打开抽屉的逻辑
 //    val openDrawer = {  //打开侧栏(抽屉)
@@ -1022,8 +1076,9 @@ fun HomeScreen(
             modifier = Modifier.nestedScroll(homeTopBarScrollBehavior.nestedScrollConnection),
 
             topBar = {
-                TopAppBar(
-                    colors = MyStyleKt.TopBar.getColors(),
+                Column {
+                    TopAppBar(
+                        colors = MyStyleKt.TopBar.getColors(),
                     title = {
                         //TODO 把app标题放到抽屉里，最好再有个长方形的背景图
                         if(currentHomeScreen.intValue == Cons.selectedItem_Repos){
@@ -1293,8 +1348,32 @@ fun HomeScreen(
                             RefreshActions(refreshAutomationPage)
                         }
                     },
-                    scrollBehavior = homeTopBarScrollBehavior,
-                )
+                        scrollBehavior = homeTopBarScrollBehavior,
+                    )
+                    MainProjectQuickToolbar(
+                        repos = repoPageRepoList.value,
+                        activeRepo = activeToolbarRepo,
+                        onProjectSelected = { repo ->
+                            repoPageCurRepo.value = repo
+                            goToFilesPage(repo.fullSavePath)
+                        },
+                        onBranches = { repo ->
+                            navController.navigate(Cons.nav_BranchListScreen + "/" + repo.id)
+                        },
+                        onCommit = { repo ->
+                            goToChangeListPage(repo)
+                        },
+                        onPush = { repo ->
+                            goToChangeListPage(repo)
+                            Cache.set(Cache.Key.changeListInnerPage_requireDoActFromParent, PageRequest.push)
+                            changeListRequireDoActFromParent.value = true
+                        },
+                    )
+                    MainActivityFragmentTabRow(
+                        currentHomeItemId = currentHomeScreen.intValue,
+                        onPageSelected = selectMainFragmentPage,
+                    )
+                }
             },
             floatingActionButton = {
                 //因为以前是滚动页面才显示回到顶部浮动按钮，所以是否显示浮动按钮的变量名叫pageScrolled，但后来改成不检测是否滚动了，而这个变量已经传的到处都是，所以就将错就错了
