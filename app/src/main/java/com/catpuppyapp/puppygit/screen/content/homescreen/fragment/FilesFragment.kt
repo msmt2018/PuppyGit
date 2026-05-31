@@ -1,11 +1,8 @@
 package com.catpuppyapp.puppygit.screen.content.homescreen.fragment
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Folder
 import com.catpuppyapp.puppygit.constants.Cons
 
-object FilesFragment : MainActivityFragmentPage {
-    override val homeItemId = Cons.selectedItem_Files
-    override val title = "文件"
-    override val icon = Icons.Filled.Folder
+/** Full file tree/page, backed by the existing FilesInnerPage flow inside HomeScreen. */
+class FilesFragment : HomeScreenPageFragment() {
+    override val initialHomeScreen: Int = Cons.selectedItem_Files
 }
