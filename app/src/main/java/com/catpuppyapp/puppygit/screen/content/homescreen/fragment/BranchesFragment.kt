@@ -10,7 +10,10 @@ class BranchesFragment : BaseMainActivityComposeFragment() {
     protected override fun FragmentContent() {
         BranchListScreen(
             repoId = requireArguments().getString(ARG_REPO_ID).orEmpty(),
-            naviUp = ::closeFragment,
+            naviUp = {
+                closeFragment()
+                true
+            },
         )
     }
 

@@ -10,7 +10,10 @@ class StashFragment : BaseMainActivityComposeFragment() {
     protected override fun FragmentContent() {
         StashListScreen(
             repoId = requireArguments().getString(ARG_REPO_ID).orEmpty(),
-            naviUp = ::closeFragment,
+            naviUp = {
+                closeFragment()
+                true
+            },
         )
     }
 
